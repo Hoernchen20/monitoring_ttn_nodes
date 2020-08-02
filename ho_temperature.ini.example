@@ -1,0 +1,18 @@
+[DEFAULT]
+App_ID = ttn_app_id
+Timeout = 60
+
+[MQTT]
+MQTT_Username = ttn_app_id
+MQTT_Password = ttn-account-v2.xxx
+MQTT_Server = eu.thethings.network
+MQTT_Port = 8883
+MQTT_Cert = ca_cert.pem.txt
+
+[MAIL]
+Mail_Sender = mail@example.com
+Mail_Receiver = mail@example.com
+Mail_Username = mail@example.com
+Mail_Password = SuperSecretPassword
+Mail_Server = smtp.example.com
+Mail_Port = 587
