@@ -118,8 +118,8 @@ else:
                 mail_msg = EmailMessage()
                 mail_msg['From'] = mail_sender
                 mail_msg['To'] = mail_receiver
-                mail_msg['Subject'] = app_id + "node down"
-                mail_msg.set_content("last msg from node: " + node + " was at " + timestamp.strftime("%b %d %H:%M:%S"))
+                mail_msg['Subject'] = app_id + " node down"
+                mail_msg.set_content("last msg from node '" + node + "'  was on " + timestamp.strftime("%d %b %H:%M:%S"))
 
                 mail_client = smtplib.SMTP(mail_server, mail_port)
                 mail_client.starttls()
