@@ -10,44 +10,50 @@ import signal, os
 import configparser
 import smtplib
 from email.message import EmailMessage
+import logging
 
 nodes = {"start": datetime.now()}
 
 def signal_handler(signum, frame):
-    print('Signal handler called with signal', signum)
-    client.unsubscribe(mqtt_topic)
-    client.disconnect()
-    client.loop_stop()
-    print_log("[mqtt] Connection disconnect")
-    exit()
-
-def print_log(msg):
-    print(strftime("%b %d %H:%M:%S", localtime()), msg)
+    logging.info('Signal handler called with signal ' + str(signum))
+    if signum == signal.SIGINT.value:
+        client.unsubscribe(mqtt_topic)
+        client.disconnect()
+        client.loop_stop()
+        logging.info("[mqtt] Connection disconnect")
+        exit()
+    elif signum == signal.SIGUSR1.value:
+        logging.info("Print nodes table:")
+        copy_of_nodes = nodes.copy()
+        for node, timestamp in copy_of_nodes.items():
+            logging.info("node: '" + node + "' timestamp: " + timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+    else:
+        logging.warn("No signal handler defined")
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
-        print_log("[mqtt] Connection successful")
+        logging.info("[mqtt] Connection successful")
     elif rc == 1:
-        print_log("[mqtt] Connection refused - incorrect protocol version")
+        logging.error("[mqtt] Connection refused - incorrect protocol version")
     elif rc == 2:
-        print_log("[mqtt] Connection refused - invalid client identifier")
+        logging.error("[mqtt] Connection refused - invalid client identifier")
     elif rc == 3:
-        print_log("[mqtt] Connection refused - server unavailable")
+        logging.error("[mqtt] Connection refused - server unavailable")
     elif rc == 4:
-        print_log("[mqtt] Connection refused - bad username or password")
+        logging.error("[mqtt] Connection refused - bad username or password")
     elif rc == 5:
-        print_log("[mqtt] Connection refused - not authorised")
+        logging.error("[mqtt] Connection refused - not authorised")
     else:
-        print_log("[mqtt] Unknown return code: " + str(rc))
+        logging.error("[mqtt] Unknown return code: " + str(rc))
 
     rc = client.subscribe(mqtt_topic, 0)
 
     if rc[0] == 0:
-        print_log("[mqtt] Subscribtion successful - message id: " + str(rc[1]))
+        logging.info("[mqtt] Subscribtion successful - message id: " + str(rc[1]))
     elif rc[0] == 1:
-        print_log("[mqtt] Subscribtion error - client not connected")
+        logging.error("[mqtt] Subscribtion error - client not connected")
     else:
-        print_log("[mqtt] Unknown return code: " + str(rc))
+        logging.error("[mqtt] Unknown return code: " + str(rc))
 
 def on_message(client, userdata, msg):
     data = json.loads(msg.payload)
@@ -55,10 +61,10 @@ def on_message(client, userdata, msg):
     nodes.update(dev)
 
 def on_disconnect(client, userdata, rc):
-    print_log("Disconnect with result code "+str(rc))
+    logging.info("Disconnect with result code "+str(rc))
 
 def on_log(mqtt, obj, level, string):
-    print_log(string)
+    logging.debug(string)
 
 try:
     config_file = str(sys.argv[1])
@@ -73,6 +79,7 @@ else:
 
         app_id = config['DEFAULT']['App_ID']
         timeout = int(config['DEFAULT']['Timeout'])
+        logfile = config['DEFAULT']['Logfile']
 
         mqtt_topic = app_id + "/devices/+/up"
         mqtt_username = config['MQTT']['MQTT_Username']
@@ -88,11 +95,15 @@ else:
         mail_server = config['MAIL']['Mail_Server']
         mail_port = int(config['MAIL']['Mail_Port'])
     except :
-        print_log("error open config file")
+        print("error open config file")
         sys.exit()
 
     signal.signal(signal.SIGINT, signal_handler)
-    print_log("Start")
+    signal.signal(signal.SIGUSR1, signal_handler)
+
+    logging.basicConfig(filename=logfile, format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
+    logging.info("Starting")
+
     client = mqtt.Client()
     client.on_connect = on_connect
     client.on_message = on_message
@@ -105,7 +116,7 @@ else:
     try:
         client.connect(mqtt_server, mqtt_port, 30)
     except:
-        print_log("[mqtt] Error connect")
+        logging.error("[mqtt] Error connect")
         exit()
 
     client.loop_start()
@@ -113,7 +124,6 @@ else:
     while True:
         copy_of_nodes = nodes.copy()
         for node, timestamp in copy_of_nodes.items():
-            print_log("last msg from node: " + node + " was at " + timestamp.strftime("%b %d %H:%M:%S"))
             if (datetime.now() - timedelta(minutes=timeout)) > timestamp:
                 mail_msg = EmailMessage()
                 mail_msg['From'] = mail_sender
@@ -127,6 +137,6 @@ else:
                 mail_client.sendmail(mail_sender, mail_receiver, mail_msg.as_string())
                 mail_client.quit()
 
-                print_log("remove " + node + " from dict")
+                logging.warn("remove " + node + " from dict")
                 del nodes[node]
         time.sleep(60)

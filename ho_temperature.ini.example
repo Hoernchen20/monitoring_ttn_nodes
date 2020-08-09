@@ -1,6 +1,7 @@
 [DEFAULT]
 App_ID = ttn_app_id
 Timeout = 60
+Logfile = test.log
 
 [MQTT]
 MQTT_Username = ttn_app_id
