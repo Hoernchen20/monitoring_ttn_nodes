@@ -56,7 +56,7 @@ def on_connect(client, userdata, flags, rc):
         logging.error("[mqtt] Unknown return code: " + str(rc))
 
 def on_message(client, userdata, msg):
-    data = json.loads(msg.payload)
+    data = json.loads(msg.payload.decode('utf-8'))
     dev = { data["dev_id"]: datetime.now() }
     nodes.update(dev)
 
@@ -108,7 +108,7 @@ else:
     client.on_connect = on_connect
     client.on_message = on_message
     client.on_disconnect = on_disconnect
-    #client.on_log = on_log
+    client.on_log = on_log
 
     client.tls_set(ca_certs=mqtt_cert)
     client.username_pw_set(username=mqtt_username, password=mqtt_password)
